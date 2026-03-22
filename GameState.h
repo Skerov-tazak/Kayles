@@ -3,6 +3,10 @@
 
 #include <cstdint>
 #include <ctime>
+#include <string>
+#include <stdexcept>
+#include <algorithm>
+
 #include "kayles_types.h"
 
 class GameState {
@@ -17,7 +21,8 @@ private:
 	time_t last_activity;
 
 public:
-	GameState(int32_t player_a_id, int32_t game_id);
+	GameState(int32_t player_a_id, int32_t game_id, int8_t* pawn_template, int8_t max_pawn);
+	~GameState();
 
 	int32_t get_game_id() const;
 	int32_t get_player_a_id() const;
@@ -26,6 +31,11 @@ public:
 	time_t get_last_activity() const;
 	int8_t get_max_pawn() const;
 	int8_t* get_pawn_row() const;
+
+	void set_status(Status);
+	void set_player_b(int32_t);
+
+	bool boardIsEmpty();
 
 	void remove_one_pawn(int32_t pawn_number);
 

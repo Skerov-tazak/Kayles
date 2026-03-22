@@ -3,11 +3,10 @@
 
 #include <cstdint>
 #include <ctime>
-#include <unordered_map>
-#include <list>
 #include <optional>
 #include <variant>
 #include <vector>
+
 #include "GameState.h"
 
 class GameStatesArray {
@@ -23,42 +22,14 @@ class GameStatesArray {
 		
 		time_t timeout;
 
+		int8_t* pawn_template;
+
+		int8_t max_pawn;
+
 		int32_t head_free_index;
 		
-		std::unordered_map<int32_t, int32_t> id_to_index;
-		
-		struct DeadNode 
-		{
-			int32_t id;
-			time_t timestamp;
-		};
-
-		class DeadQueue 
-		{
-			private:
-				std::list<DeadNode> dll;
-
-				// Maps indexes to linked list nodes
-				std::unordered_map<int32_t, std::list<DeadNode>::iterator> hash_map;
-				
-				// Timeout constant
-				time_t timeout;
-
-			public:
-
-				DeadQueue(time_t);
-				
-				void put(int32_t id, time_t timestamp);
-				
-				void refresh(int32_t id, time_t timestamp);
-				
-				std::optional<int32_t> pop();
-		};
-
-
-		DeadQueue dead_queue;
-		// Private delete which will only be called legally by DeadQueue
-		void deleteElem(int32_t id);
+		// Private delete
+		void deleteElem(int32_t);
 
 		void increase_size();
 
@@ -66,16 +37,15 @@ class GameStatesArray {
 
 	public:
 
-		GameStatesArray(time_t);
+		GameStatesArray(time_t, int8_t*, int8_t);
+	
+		~GameStatesArray();
 
-		// Moves the game to the DeadQueue
-		void killGame(int32_t id, time_t timestamp);
-
-		// Inserts a new game state into the pool
-		void insertNewElem(int32_t game_id, int32_t player_a_id);
+		// Inserts a new game state into the pool and returns its index
+		int32_t insertNewElem(int32_t);
 
 		// Retrieves a game state by ID
-		GameState* get_game_state(int32_t game_id);
+		GameState* get_game_state(int32_t);
 };
 
 #endif // GAMESTATESARRAY_H

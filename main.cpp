@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <iostream>
 #include <stdint.h>
 #include <string>
@@ -8,15 +7,14 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <stdlib.h>
-#include "err.h"
-#include "serverService.h"
+#include "ServerController.h"
 
 long parse_long(const char* input, long min, long max, const std::string& name) {
 	char* endptr;
 	errno = 0;
 	long val = strtol(input, &endptr, 10);
 	if (errno != 0 || *endptr != '\0' || val < min || val > max) {
-		fatal("Invalid %s: %s", name.c_str(), input);
+		throw std::invalid_argument("Invalid " + name + ": " + input);
 	}
 	return val;
 }
@@ -49,20 +47,20 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (r_arg == nullptr || a_arg == nullptr || p_arg == -1 || t_arg == -1) {
-		fatal("All arguments (-r, -a, -p, -t) are compulsory.");
+		throw std::invalid_argument("All arguments (-r, -a, -p, -t) are compulsory.");
 	}
 
 	// Validate -r: string max length 255 consisting only of 1s and 0s
 	size_t r_len = strlen(r_arg);
 	if (r_len > 255) {
-		fatal("Rules string (-r) must not exceed 255 characters.");
+		throw std::invalid_argument("Rules string (-r) must not exceed 255 characters.");
 	}
 	if (r_len == 0) {
-		fatal("Rules string (-r) cannot be empty.");
+		throw std::invalid_argument("Rules string (-r) cannot be empty.");
 	}
 	for (size_t i = 0; i < r_len; ++i) {
 		if (r_arg[i] != '0' && r_arg[i] != '1') {
-			fatal("Rules string (-r) must consist only of '0' and '1'.");
+			throw std::invalid_argument("Rules string (-r) must consist only of '0' and '1'.");
 		}
 	}
 
@@ -71,7 +69,7 @@ int main(int argc, char* argv[]) {
 	struct sockaddr_in6 sa6;
 	if (inet_pton(AF_INET, a_arg, &(sa.sin_addr)) != 1 &&
 		inet_pton(AF_INET6, a_arg, &(sa6.sin6_addr)) != 1) {
-		fatal("Invalid IP address (-a): %s", a_arg);
+		throw std::invalid_argument(std::string("Invalid IP address (-a): ") + a_arg);
 	}
 
 	std::cout << "Rules: " << r_arg << std::endl;
@@ -80,7 +78,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "Timeout: " << t_arg << std::endl;
 
 	// Create the server class
-	Server mainframe(a_arg, r_arg, p_arg, t_arg);
+	ServerController mainframe(a_arg, r_arg, p_arg, t_arg);
 
 	return 0;
 }

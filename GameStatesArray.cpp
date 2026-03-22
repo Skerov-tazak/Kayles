@@ -1,54 +1,10 @@
 #include "GameStatesArray.h"
 #include "GameState.h"
-#include <cstdint>
-#include <ctime>
-#include <iostream>
-#include <optional>
-
-// DeadQueue implementation
-GameStatesArray::DeadQueue::DeadQueue(time_t t)
-{
-	this->timeout = t;
-}
-
-void GameStatesArray::DeadQueue::put(int32_t id, time_t timestamp) 
-{
-	dll.push_back({id, timestamp});
-	hash_map[id] = std::prev(dll.end());
-}
-
-void GameStatesArray::DeadQueue::refresh(int32_t id, time_t timestamp) 
-{
-	auto it = hash_map.find(id);
-	if (it != hash_map.end()) 
-	{
-		it->second->timestamp = timestamp;
-		dll.splice(dll.end(), dll, it->second);
-	}
-}
-
-std::optional<int32_t> GameStatesArray::DeadQueue::pop() 
-{
-	// Return nullopt if the queue is empty
-	if (dll.empty()) return std::nullopt;
-
-	time_t now = std::time(nullptr);
-	if (now - dll.front().timestamp >= timeout) 
-	{
-		int32_t id = dll.front().id;
-		hash_map.erase(id);
-		dll.pop_front();
-		return id;
-	}
-
-	// Return nullopt if the oldest element is not older than timeout
-	return std::nullopt;
-}
-
 
 // GameStatesArray implementation
-GameStatesArray::GameStatesArray(time_t timeout) : timeout(timeout), dead_queue(timeout) 
-{
+GameStatesArray::GameStatesArray(time_t timeout, int8_t* pawn_template, int8_t max_pawn) 
+	: timeout(timeout), pawn_template(pawn_template), max_pawn(max_pawn){
+
 	// Creates the initial free list
 	slots.resize(INITIAL);
 
@@ -57,6 +13,15 @@ GameStatesArray::GameStatesArray(time_t timeout) : timeout(timeout), dead_queue(
 	}
 
 	slots[INITIAL - 1] = static_cast<int32_t>(-1);
+	head_free_index = 0;
+}
+
+GameStatesArray::~GameStatesArray(){
+	delete pawn_template;
+	for(auto x : slots){
+		if(GameState* gamestate = std::get_if<GameState>(&x))
+			delete gamestate;
+	}
 }
 
 void GameStatesArray::increase_size(){
@@ -64,8 +29,8 @@ void GameStatesArray::increase_size(){
 	int32_t first_new = slots.size();
 	slots.resize(slots.size() * 2);
 	
-	for(int i = first_new; i < slots.size() - 1; i++){
-		slots[first_new] = static_cast<int32_t>(i + 1);
+	for(size_t i = first_new; i < slots.size() - 1; i++){
+		slots[i] = static_cast<int32_t>(i + 1);
 	}
 
 	slots[slots.size() - 1] = static_cast<int32_t>(-1);
@@ -73,25 +38,11 @@ void GameStatesArray::increase_size(){
 }
 
 void GameStatesArray::deleteElem(int32_t id) {
-	auto it = id_to_index.find(id);
-	if (it != id_to_index.end()) {
-		int32_t index = it->second;
-		// The slot now holds the previous head_free_index (linking to the rest of the free list)
-		slots[index] = head_free_index;
-		// head_free_index now points to this freshly freed slot
-		head_free_index = index;
-		// Remove from ID map
-		id_to_index.erase(it);
-	}
-}
-
-void GameStatesArray::killGame(int32_t id, time_t timestamp) {
-
-	// Moving the game to the DeadQueue. 
-	// It will be deleted legally later when it pops out of the queue.
-	if (id_to_index.find(id) != id_to_index.end()) {
-		dead_queue.put(id, timestamp);
-	}
+		
+		GameState* gamestate = &std::get<GameState>(slots[id]);
+		delete gamestate;
+		slots[id] = head_free_index;
+		head_free_index = id;
 }
 
 void GameStatesArray::cleanse_timeouted_games()
@@ -99,28 +50,19 @@ void GameStatesArray::cleanse_timeouted_games()
 	// Iterate over all elements and cleanse those that have timed out
 	for(auto elem : slots){
 		GameState* gamestate = &std::get<GameState>(elem);
-		if()
+		if(std::time(0) - gamestate->get_last_activity() > timeout)
+			deleteElem(gamestate->get_game_id());
 	}
 
 }
 
-void GameStatesArray::insertNewElem(GameState* gamestate) 
+int32_t GameStatesArray::insertNewElem(int32_t player_a_id) 
 {
-	// First try the top element from DeadQueue - if 
-	// any element is expired in dead queue it will become a
-	// free slot now
-	std::optional<int32_t> longest_dead = dead_queue.pop();
-	
-	if(longest_dead.has_value())
-	{
-		deleteElem(longest_dead.value());
-	}
-
-	// If Pool is full then try to make it bigger
+	// If Pool is full then try to make space
 	if (head_free_index == -1) {
-
 		cleanse_timeouted_games();
 		
+		// If it failed then make it bigger
 		if(head_free_index == -1)
 			increase_size();
 	}
@@ -128,23 +70,17 @@ void GameStatesArray::insertNewElem(GameState* gamestate)
 	int32_t new_index = head_free_index;
 
 	// Update head_free_index to the next available slot in the chain
-	// Use std get for variant
 	head_free_index = std::get<int32_t>(slots[new_index]);
 
 	// Overwrite with the new GameState
-	slots[new_index] = GameState(player_a_id, game_id);
-	id_to_index[game_id] = new_index;
-
+	slots[new_index] = GameState(player_a_id, new_index, pawn_template, max_pawn);
+	return new_index;
 }
 
 GameState* GameStatesArray::get_game_state(int32_t game_id) 
 {
-	auto it = id_to_index.find(game_id);
-	if (it != id_to_index.end()) 
-	{
-		// Return GameState type from variant
-		return &std::get<GameState>(slots[it->second]);
-	}
-
-	return nullptr;
+	if(GameState* gamestate = std::get_if<GameState>(&slots[game_id]))
+		return gamestate;
+	else 
+		return nullptr;
 }
