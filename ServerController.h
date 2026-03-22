@@ -17,19 +17,21 @@
 
 class ServerController {
 
-	static constexpr int BUFFER_SIZE = 100;
-	static char* buffer[BUFFER_SIZE];
-	static ServerService server_service;
-	char* addr;
-	int8_t* pawn_template;
-	int8_t max_pawn;
-	int16_t port;
-	static time_t timeout;
-	sockaddr_in server_address;
+	private:
 
-public:
-	ServerController(char* addr, char* pawn_template, int16_t port, int8_t timeout);
-	~ServerController();
+		static constexpr int BUFFER_SIZE = 10;
+		static char buffer[BUFFER_SIZE];
+		ServerService server_service;
+		int socket_fd;
+		char* addr;
+		uint16_t port;
+		sockaddr_in server_address;
+
+		void run_server();
+
+	public:
+		ServerController(char* addr, uint8_t* pawn_template, uint8_t max_pawn, uint16_t port, uint8_t timeout);
+		~ServerController();
 };
 
 #endif // SERVERCONTROLLER_H

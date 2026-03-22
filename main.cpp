@@ -19,6 +19,21 @@ long parse_long(const char* input, long min, long max, const std::string& name) 
 	return val;
 }
 
+uint8_t* string_to_bitstring(const char* s, size_t len) {
+	size_t byte_count = (len + 7) / 8;
+	uint8_t* bits = new uint8_t[byte_count];
+	std::memset(bits, 0, byte_count);
+	for (size_t i = 0; i < len; ++i) {
+		if (s[i] == '1') {
+			bits[i / 8] |= (1 << (i % 8));
+		} else if (s[i] != '0') {
+			delete[] bits;
+			throw std::invalid_argument("Rules string must consist only of '0' and '1'.");
+		}
+	}
+	return bits;
+}
+
 int main(int argc, char* argv[]) {
 	char *r_arg = nullptr;
 	char *a_arg = nullptr;
@@ -58,6 +73,9 @@ int main(int argc, char* argv[]) {
 	if (r_len == 0) {
 		throw std::invalid_argument("Rules string (-r) cannot be empty.");
 	}
+	if (r_arg[r_len - 1] != '1') {
+		throw std::invalid_argument("Rules string (-r) must end with '1'.");
+	}
 	for (size_t i = 0; i < r_len; ++i) {
 		if (r_arg[i] != '0' && r_arg[i] != '1') {
 			throw std::invalid_argument("Rules string (-r) must consist only of '0' and '1'.");
@@ -77,8 +95,14 @@ int main(int argc, char* argv[]) {
 	std::cout << "Port: " << p_arg << std::endl;
 	std::cout << "Timeout: " << t_arg << std::endl;
 
+	// Create bitstring for rules
+	uint8_t* r_bitstring = string_to_bitstring(r_arg, r_len);
+	uint8_t max_pawn = (uint8_t)r_len;
+
 	// Create the server class
-	ServerController mainframe(a_arg, r_arg, p_arg, t_arg);
+	ServerController mainframe(a_arg, r_bitstring, max_pawn, (uint16_t)p_arg, (uint8_t)t_arg);
+
+	delete[] r_bitstring;
 
 	return 0;
 }

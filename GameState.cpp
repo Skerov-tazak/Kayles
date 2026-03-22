@@ -1,28 +1,28 @@
 #include "GameState.h"
 
-GameState::GameState(int32_t player_a_id, int32_t game_id, int8_t* pawn_template, int8_t max_pawn)
-	: game_id(game_id), player_a_id(player_a_id), player_b_id(0), status(WAITING_FOR_OPONENT), max_pawn(max_pawn) 
+GameState::GameState(uint32_t player_a_id, uint32_t game_id, uint8_t* pawn_template, uint8_t max_pawn)
+	: game_id(game_id), player_a_id(player_a_id), player_b_id(0), status(WAITING_FOR_OPPONENT), max_pawn(max_pawn) 
 {
-
 	last_activity = std::time(0);
-	pawn_row = new int8_t[max_pawn]; 
-	std::copy(pawn_template, pawn_template + max_pawn, pawn_row);
+	size_t bitmap_size = max_pawn / 8 + 1;
+	pawn_row = new uint8_t[bitmap_size]; 
+	std::copy(pawn_template, pawn_template + bitmap_size, pawn_row);
 }
 
 GameState::~GameState()
 {
-	delete pawn_row;
+	delete[] pawn_row;
 }
 
-int32_t GameState::get_game_id() const {
+uint32_t GameState::get_game_id() const {
 	return game_id;
 }
 
-int32_t GameState::get_player_a_id() const {
+uint32_t GameState::get_player_a_id() const {
 	return player_a_id;
 }
 
-int32_t GameState::get_player_b_id() const {
+uint32_t GameState::get_player_b_id() const {
 	return player_b_id;
 }
 
@@ -34,11 +34,11 @@ time_t GameState::get_last_activity() const {
 	return last_activity;
 }
 
-int8_t GameState::get_max_pawn() const {
+uint8_t GameState::get_max_pawn() const {
 	return max_pawn;
 }
 
-int8_t* GameState::get_pawn_row() const {
+uint8_t* GameState::get_pawn_row() const {
 	return pawn_row;
 }
 
@@ -46,7 +46,11 @@ void GameState::set_status(Status new_status){
 	status = new_status;
 }
 
-void GameState::remove_one_pawn(int32_t pawn_number) {
+void GameState::set_player_b(uint32_t player_id) {
+	player_b_id = player_id;
+}
+
+void GameState::remove_one_pawn(uint32_t pawn_number) {
 
 	if(pawn_number > max_pawn){
 		throw std::invalid_argument("One or more pawns out of range!");
@@ -66,14 +70,15 @@ void GameState::remove_one_pawn(int32_t pawn_number) {
 }
 
 bool GameState::boardIsEmpty(){
-	for(int i = 0; i < max_pawn; i++){
+	size_t bitmap_size = max_pawn / 8 + 1;
+	for(size_t i = 0; i < bitmap_size; i++){
 		if(pawn_row[i] != 0)
 			return false;
 	}
 	return true;
 }
 
-void GameState::remove_two_pawns(int32_t pawn_number) {
+void GameState::remove_two_pawns(uint32_t pawn_number) {
 
 	if(pawn_number >= max_pawn){
 		throw std::invalid_argument("One or more pawns out of range!");

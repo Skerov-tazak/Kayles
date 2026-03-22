@@ -1,6 +1,6 @@
 #include "ServerService.h"
 
-ServerService::ServerService(time_t timestamp, int8_t* pawn_template, int8_t max_pawn) 
+ServerService::ServerService(time_t timestamp, uint8_t* pawn_template, uint8_t max_pawn) 
 	: games(timestamp, pawn_template, max_pawn){
 	openGameID = std::nullopt;
 }
@@ -14,14 +14,14 @@ void ServerService::set_message(ClientMessage* message){
 }
 
 void ServerService::perform_requests() {
-	int32_t player = message->player_id;
-	int32_t game_id = message->game_id;
-	int32_t pawn = message->pawn;
+	uint32_t player = message->player_id;
+	uint32_t game_id = message->game_id;
+	uint32_t pawn = message->pawn;
 
 	switch (message->message_type) {
 		case MSG_JOIN:{
 			if(openGameID.has_value()){
-				int32_t id = openGameID.value();
+				uint32_t id = openGameID.value();
 				GameState* gamestate = games.get_game_state(id);
 				gamestate->set_player_b(message->player_id);
 				gamestate->set_status(TURN_B);
@@ -29,7 +29,7 @@ void ServerService::perform_requests() {
 			}
 			else 
 			{
-				openGameID = std::make_optional<int32_t>(games.insertNewElem(player));
+				openGameID = std::make_optional<uint32_t>(games.insertNewElem(player));
 			}
 			break;
 		}

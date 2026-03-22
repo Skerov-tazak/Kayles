@@ -1,13 +1,12 @@
 #include "ServerController.h"
+#include "ServerService.h"
+#include <cstdint>
+#include <system_error>
 
-ServerController::ServerController(char* addr, char* game_cond, int16_t port, int8_t timeout) 
-: addr(addr), game_cond(game_cond), port(port) {
+ServerController::ServerController(char* addr, uint8_t* pawn_template, uint8_t max_pawn, uint16_t port, uint8_t timeout) 
+: addr(addr), server_service(timeout, pawn_template, max_pawn), port(port) {
 
-	this->timeout = (time_t)timeout;
-	server_service(game_cond);
-	
-
-	int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
+	socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (socket_fd < 0) {
 		throw std::system_error();
 	}
@@ -20,7 +19,28 @@ ServerController::ServerController(char* addr, char* game_cond, int16_t port, in
 	if (bind(socket_fd, (struct sockaddr *) &server_address, (socklen_t) sizeof(server_address)) < 0) {
 		throw std::system_error();
 	}
-
-	std::cout << "listening on port " << port << " addres " << addr << "\n";
 }
 
+void ServerController::run_server(){
+
+	std::cout << "listening on port " << port << " addres " << addr << "\n";
+
+	do {
+
+		// Clean the buffer.
+		memset(buffer, 0, sizeof(buffer)); 
+		int flags = 0;
+
+		struct sockaddr_in client_address;
+		socklen_t address_length = (socklen_t) sizeof(client_address);
+
+		int received_length = recvfrom(socket_fd, buffer, BUFFER_SIZE, flags,
+								   (struct sockaddr *) &client_address, &address_length);
+
+		if (received_length < 0) {
+			throw std::system_error();
+		}
+
+
+	} while(true);
+}

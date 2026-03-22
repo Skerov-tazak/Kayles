@@ -14,13 +14,13 @@ class ServerService {
 	private:
 		ClientMessage* message;
 		
-		std::optional<int32_t> openGameID;
+		std::optional<uint32_t> openGameID;
 		
 		GameStatesArray games;
 
 	public:
 
-		ServerService(time_t, int8_t*, int8_t);
+		ServerService(time_t, uint8_t*, uint8_t);
 		~ServerService();
 
 		/*
