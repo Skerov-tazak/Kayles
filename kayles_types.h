@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <ctime>
 
-enum Status {
+enum Status : uint8_t{
 	WAITING_FOR_OPPONENT = 0,
 	TURN_A = 1,
 	TURN_B = 2,
@@ -12,12 +12,19 @@ enum Status {
 	WIN_B = 4
 };
 
-enum MessageType {
+enum MessageType : uint8_t{
 	MSG_JOIN = 0,
 	MSG_MOVE_1 = 1,
 	MSG_MOVE_2 = 2,
 	MSG_KEEP_ALIVE = 3,
 	MSG_GIVE_UP = 4
+};
+
+enum ErrorType : uint8_t{
+	UKNOWN_MESSAGE_TYPE = 0,
+	INVALID_PLAYER = 1,
+	INVALID_GAME_ID = 5,
+	INVALID_PAWN = 11
 };
 
 struct ClientMessage {

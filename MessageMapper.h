@@ -9,16 +9,12 @@
 #include "kayles_types.h"
 #include "GameState.h"
 
-class MessageMapper {
+ClientMessage mapper_parse_client_message(char* msg);
 
-public:
-		static ClientMessage parse_client_message(char* msg);
-		
-		static void encode_client_message(ClientMessage, char* buffer);
+void mapper_encode_client_message(ClientMessage*, char* buffer);
 
-		static GameState parse_gamestate_message(char* msg);
+GameState mapper_parse_gamestate_message(char* msg);
 
-		static void encode_gamestate_message(GameState&, char* buffer);
+void mapper_encode_gamestate_message(GameState*, char* buffer);
 
-};
 #endif // MESSAGEMAPPER_H

@@ -31,6 +31,8 @@ class ServerService {
 
 		void set_message(ClientMessage*);
 
+		GameState* get_relevant_gamestate();
+
 };
 
 #endif // SERVERSERVICE_H

@@ -1,4 +1,5 @@
 #include "ServerService.h"
+#include "kayles_types.h"
 
 ServerService::ServerService(time_t timestamp, uint8_t* pawn_template, uint8_t max_pawn) 
 	: games(timestamp, pawn_template, max_pawn){
@@ -11,6 +12,10 @@ ServerService::~ServerService(){
 void ServerService::set_message(ClientMessage* message){
 	delete this->message;
 	this->message = message;
+}
+
+GameState* ServerService::get_relevant_gamestate(){
+	return games.get_game_state(message->game_id);
 }
 
 void ServerService::perform_requests() {
@@ -37,7 +42,7 @@ void ServerService::perform_requests() {
 		case MSG_GIVE_UP:{
 			GameState* gamestate = games.get_game_state(game_id);
 			if(gamestate == nullptr)
-				throw std::invalid_argument("This game does not exist");
+				throw INVALID_GAME_ID;
 			if(gamestate->get_player_a_id() == player && gamestate->get_status() == TURN_A)
 			{
 				gamestate->set_status(WIN_B);
@@ -48,8 +53,7 @@ void ServerService::perform_requests() {
 			}
 			else 
 			{
-				throw std::invalid_argument("This player can't give up! He is not taking part in this \
-						game or this is not his turn!");
+				throw INVALID_PLAYER;
 			}
 			break;
 		}
@@ -57,7 +61,7 @@ void ServerService::perform_requests() {
 		case MSG_MOVE_1:{
 			GameState* gamestate = games.get_game_state(game_id);
 			if(gamestate == nullptr)
-				throw std::invalid_argument("This game does not exist");
+				throw INVALID_GAME_ID;
 
 			if(gamestate->get_player_a_id() == player && gamestate->get_status() == TURN_A)
 			{
@@ -79,8 +83,7 @@ void ServerService::perform_requests() {
 			}
 			else 
 			{
-				throw std::invalid_argument("This player can't give up! He is not taking part in this \
-						game or this is not his turn!");
+				throw INVALID_PLAYER;
 			}
 			break;
 		}
@@ -88,7 +91,7 @@ void ServerService::perform_requests() {
 		case MSG_MOVE_2:{
 			GameState* gamestate = games.get_game_state(game_id);
 			if(gamestate == nullptr)
-				throw std::invalid_argument("This game does not exist");
+				throw INVALID_GAME_ID;
 
 			if(gamestate->get_player_a_id() == player && gamestate->get_status() == TURN_A)
 			{
@@ -110,8 +113,7 @@ void ServerService::perform_requests() {
 			}
 			else 
 			{
-				throw std::invalid_argument("This player can't give up! He is not taking part in this \
-						game or this is not his turn!");
+				throw INVALID_PLAYER;
 			}
 			break;
 		}
@@ -119,26 +121,22 @@ void ServerService::perform_requests() {
 		case MSG_KEEP_ALIVE:{
 			GameState* gamestate = games.get_game_state(game_id);
 			if(gamestate == nullptr)
-				throw std::invalid_argument("This game does not exist");
+				throw INVALID_GAME_ID;
 
-			if(gamestate->get_player_a_id() == player && gamestate->get_status() == TURN_A)
-			{
-				gamestate->refresh_activity();
-			}
-			else if(gamestate->get_player_a_id() == player && gamestate->get_status() == TURN_A)
-			{
+			if(gamestate->get_player_a_id() == player && gamestate->get_status() == TURN_A ||
+					gamestate->get_player_b_id() == player && gamestate->get_status() == TURN_B) {
+				
 				gamestate->refresh_activity();
 			}
 			else 
 			{
-				throw std::invalid_argument("This player can't give up! He is not taking part in this \
-						game or this is not his turn!");
+				throw INVALID_PLAYER;
 			}
 			break;
 		}
 		
 		default:{
-			throw std::invalid_argument("Unrecognised message code");
+			throw UKNOWN_MESSAGE_TYPE;
 		}
 	}
 }

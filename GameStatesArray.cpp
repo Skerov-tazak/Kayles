@@ -59,6 +59,7 @@ void GameStatesArray::cleanse_timeouted_games()
 uint32_t GameStatesArray::insertNewElem(uint32_t player_a_id) 
 {
 	// If Pool is full then try to make space
+	// Head free index will be -1 if and only if we have filled the entire array
 	if (head_free_index == (uint32_t)-1) {
 		cleanse_timeouted_games();
 		
