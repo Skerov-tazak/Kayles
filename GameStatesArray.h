@@ -33,7 +33,7 @@ class GameStatesArray {
 
 		void increase_size();
 
-		void cleanse_timeouted_games();
+		uint32_t cleanse_timeouted_games();
 
 	public:
 

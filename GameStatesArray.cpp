@@ -1,5 +1,6 @@
 #include "GameStatesArray.h"
 #include "GameState.h"
+#include <cstdint>
 
 // GameStatesArray implementation
 GameStatesArray::GameStatesArray(time_t timeout, uint8_t* pawn_template, uint8_t max_pawn) 
@@ -45,15 +46,21 @@ void GameStatesArray::deleteElem(uint32_t id) {
 		head_free_index = id;
 }
 
-void GameStatesArray::cleanse_timeouted_games()
+uint32_t GameStatesArray::cleanse_timeouted_games()
 {
+	uint32_t cleaned_number = 0;
 	// Iterate over all elements and cleanse those that have timed out
-	for(auto elem : slots){
-		GameState* gamestate = &std::get<GameState>(elem);
-		if(std::time(0) - gamestate->get_last_activity() > timeout)
-			deleteElem(gamestate->get_game_id());
+	for(auto& elem : slots){
+		if(GameState* gamestate = std::get_if<GameState>(&elem)){
+			if(std::time(0) - gamestate->get_last_activity() > timeout){
+				deleteElem(gamestate->get_game_id());
+				cleaned_number++;
+				
+			}
+		}
 	}
 
+	return cleaned_number;
 }
 
 uint32_t GameStatesArray::insertNewElem(uint32_t player_a_id) 
@@ -61,10 +68,9 @@ uint32_t GameStatesArray::insertNewElem(uint32_t player_a_id)
 	// If Pool is full then try to make space
 	// Head free index will be -1 if and only if we have filled the entire array
 	if (head_free_index == (uint32_t)-1) {
-		cleanse_timeouted_games();
 		
-		// If it failed then make it bigger
-		if(head_free_index == (uint32_t)-1)
+		// We allocate more space if the cleanup didn't help a lot
+		if(cleanse_timeouted_games() < slots.size()/4)
 			increase_size();
 	}
 
