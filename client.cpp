@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <cstring>
-#include <vector>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -14,7 +13,7 @@
 #include "MessageMapper.h"
 
 void print_usage() {
-	std::cerr << "Usage: ./client -a address -p port -m type/player_id/game_id/pawn -t timeout\n";
+	std::cerr << "Usage: ./client -a address -p port -m type[/player_id[/game_id[/pawn]]] -t timeout\n";
 }
 
 std::string status_to_string(Status s) {
@@ -33,7 +32,7 @@ std::string error_to_string(ErrorType e) {
 		case UKNOWN_MESSAGE_TYPE: return "UKNOWN_MESSAGE_TYPE";
 		case INVALID_PLAYER: return "INVALID_PLAYER";
 		case INVALID_GAME_ID: return "INVALID_GAME_ID";
-		case INVALID_PAWN: return "INVALID_PAWN";
+		case INVALID_MESSAGE_LENGTH: return "INVALID_MESSAGE_LENGTH";
 		default: return "UNKNOWN_ERROR";
 	}
 }
@@ -70,11 +69,20 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	// Parse message: type/player_id/game_id/pawn
-	uint32_t msg_type, player_id, game_id, pawn;
-	if (sscanf(message_str.c_str(), "%u/%u/%u/%u", &msg_type, &player_id, &game_id, &pawn) != 4) {
-		std::cerr << "Invalid message format. Use type/player_id/game_id/pawn\n";
+	// Parse message: type[/player_id[/game_id[/pawn]]]
+	uint32_t msg_type = 0, player_id = 0, game_id = 0, pawn = 0;
+	int num_fields = sscanf(message_str.c_str(), "%u/%u/%u/%u", &msg_type, &player_id, &game_id, &pawn);
+	if (num_fields < 1) {
+		std::cerr << "Invalid message format. At least message type is required.\n";
 		return 1;
+	}
+
+	size_t send_len = 0;
+	switch (num_fields) {
+		case 1:  send_len = 1;  break;
+		case 2:  send_len = 5;  break;
+		case 3:  send_len = 9;  break;
+		default: send_len = 10; break;
 	}
 
 	ClientMessage msg;
@@ -83,7 +91,6 @@ int main(int argc, char* argv[]) {
 	msg.game_id = game_id;
 	msg.pawn = static_cast<uint8_t>(pawn);
 
-	// Networking
 	int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (socket_fd < 0) {
 		perror("socket");
@@ -117,7 +124,7 @@ int main(int argc, char* argv[]) {
 	memset(buffer, 0, sizeof(buffer));
 	mapper_encode_client_message(&msg, buffer);
 
-	if (sendto(socket_fd, buffer, 10, 0, res->ai_addr, res->ai_addrlen) < 0) {
+	if (sendto(socket_fd, buffer, send_len, 0, res->ai_addr, res->ai_addrlen) < 0) {
 		perror("sendto");
 		freeaddrinfo(res);
 		close(socket_fd);
@@ -141,10 +148,10 @@ int main(int argc, char* argv[]) {
 	}
 
 	// Check for error
-	// According to ServerController, error is indicated by byte 13 being 255
-	if (received_len >= 15 && static_cast<uint8_t>(buffer[13]) == 255) {
-		ErrorType error_code = static_cast<ErrorType>(buffer[14]);
-		std::cout << "Server returned error: " << error_to_string(error_code) << " (code " << (int)error_code << ")\n";
+	// According to ServerController, error is indicated by byte 12 being 255
+	if (received_len >= 14 && static_cast<uint8_t>(buffer[12]) == 255) {
+		uint8_t error_byte_idx = static_cast<uint8_t>(buffer[13]);
+		std::cout << "Server returned error indicator (255) at byte 12. Faulty byte index: " << (int)error_byte_idx << "\n";
 	} else if (received_len >= 14) {
 		// Parse GameState
 		GameState state = mapper_parse_gamestate_message(buffer);
@@ -158,9 +165,9 @@ int main(int argc, char* argv[]) {
 		
 		std::cout << "Board: ";
 		uint8_t* row = state.get_pawn_row();
-		for (int i = 0; i < state.get_max_pawn(); ++i) {
+		for (int i = 0; i <= state.get_max_pawn(); ++i) {
 			int byte_idx = i / 8;
-			int bit_idx = i % 8;
+			int bit_idx = 7 - (i % 8); // MSB-first
 			if (row[byte_idx] & (1 << bit_idx)) {
 				std::cout << "I";
 			} else {

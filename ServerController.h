@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <cstring>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <netdb.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
@@ -19,19 +21,18 @@ class ServerController {
 
 	private:
 
-		static constexpr int BUFFER_SIZE = 10;
-		static char buffer[BUFFER_SIZE];
+		static constexpr int BUFFER_SIZE = 1024;
 		ServerService server_service;
 		int socket_fd;
-		char* addr;
+		std::string addr_str;
 		uint16_t port;
-		sockaddr_in server_address;
-
-		void run_server();
 
 	public:
 		ServerController(char* addr, uint8_t* pawn_template, uint8_t max_pawn, uint16_t port, uint8_t timeout);
+		
 		~ServerController();
+
+		void run_server();
 };
 
 #endif // SERVERCONTROLLER_H

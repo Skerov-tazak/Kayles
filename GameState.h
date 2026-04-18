@@ -24,6 +24,12 @@ public:
 	GameState(uint32_t player_a_id, uint32_t game_id, uint8_t* pawn_template, uint8_t max_pawn);
 	~GameState();
 
+	// Rule of Five
+	GameState(const GameState& other);
+	GameState& operator=(const GameState& other);
+	GameState(GameState&& other) noexcept;
+	GameState& operator=(GameState&& other) noexcept;
+
 	uint32_t get_game_id() const;
 	uint32_t get_player_a_id() const;
 	uint32_t get_player_b_id() const;
@@ -42,6 +48,8 @@ public:
 	void remove_two_pawns(uint32_t pawn_number);
 
 	void refresh_activity();
+
+	std::string to_string() const;
 
 };
 

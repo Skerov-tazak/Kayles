@@ -34,6 +34,8 @@ class GameStatesArray {
 		void increase_size();
 
 		uint32_t cleanse_timeouted_games();
+		
+		void update_timeout_state(GameState*);
 
 	public:
 

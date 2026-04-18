@@ -1,3 +1,4 @@
+#include <exception>
 #include <iostream>
 #include <stdint.h>
 #include <string>
@@ -25,7 +26,7 @@ uint8_t* string_to_bitstring(const char* s, size_t len) {
 	std::memset(bits, 0, byte_count);
 	for (size_t i = 0; i < len; ++i) {
 		if (s[i] == '1') {
-			bits[i / 8] |= (1 << (i % 8));
+			bits[i / 8] |= (1 << (7 - (i % 8)));
 		} else if (s[i] != '0') {
 			delete[] bits;
 			throw std::invalid_argument("Rules string must consist only of '0' and '1'.");
@@ -56,7 +57,7 @@ int main(int argc, char* argv[]) {
 				t_arg = (int)parse_long(optarg, 1, 99, "timeout");
 				break;
 			default:
-				std::cerr << "Usage: " << argv[0] << " -r <rules> -a <ip_address> -p <port> -t <timeout>" << std::endl;
+				std::cout << "Usage: " << argv[0] << " -r <rules> -a <ip_address> -p <port> -t <timeout>" << std::endl;
 				exit(1);
 		}
 	}
@@ -82,27 +83,26 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	// Validate -a: correct IP address
-	struct sockaddr_in sa;
-	struct sockaddr_in6 sa6;
-	if (inet_pton(AF_INET, a_arg, &(sa.sin_addr)) != 1 &&
-		inet_pton(AF_INET6, a_arg, &(sa6.sin6_addr)) != 1) {
-		throw std::invalid_argument(std::string("Invalid IP address (-a): ") + a_arg);
-	}
-
-	std::cout << "Rules: " << r_arg << std::endl;
-	std::cout << "Address: " << a_arg << std::endl;
-	std::cout << "Port: " << p_arg << std::endl;
-	std::cout << "Timeout: " << t_arg << std::endl;
-
 	// Create bitstring for rules
 	uint8_t* r_bitstring = string_to_bitstring(r_arg, r_len);
-	uint8_t max_pawn = (uint8_t)r_len;
+	uint8_t max_pawn = (uint8_t)(r_len - 1);
 
 	// Create the server class
-	ServerController mainframe(a_arg, r_bitstring, max_pawn, (uint16_t)p_arg, (uint8_t)t_arg);
+	try {
 
+		ServerController mainframe(a_arg, r_bitstring, max_pawn,
+				(uint16_t)p_arg, (uint8_t)t_arg);
+		
+		mainframe.run_server();
+
+	} catch (const std::bad_alloc& e) {
+		std::cerr << "Not Enough Memory to create necessary objects! " << e.what() << "\n";
+	} catch (const std::exception& e) {
+		std::cerr << "Critical Server Error: " << e.what() << "\n";
+	}
+ 
 	delete[] r_bitstring;
 
 	return 0;
 }
+

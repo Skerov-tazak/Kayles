@@ -1,5 +1,6 @@
 #include "GameStatesArray.h"
 #include "GameState.h"
+#include "kayles_types.h"
 #include <cstdint>
 
 // GameStatesArray implementation
@@ -18,32 +19,40 @@ GameStatesArray::GameStatesArray(time_t timeout, uint8_t* pawn_template, uint8_t
 }
 
 GameStatesArray::~GameStatesArray(){
-	delete pawn_template;
-	for(auto x : slots){
-		if(GameState* gamestate = std::get_if<GameState>(&x))
-			delete gamestate;
-	}
+	delete[] pawn_template;
 }
 
 void GameStatesArray::increase_size(){
 
 	uint32_t first_new = slots.size();
+	uint32_t old_head = head_free_index;
 	slots.resize(slots.size() * 2);
 	
 	for(size_t i = first_new; i < slots.size() - 1; i++){
 		slots[i] = static_cast<uint32_t>(i + 1);
 	}
 
-	slots[slots.size() - 1] = static_cast<uint32_t>(-1);
+	slots[slots.size() - 1] = old_head;
 	head_free_index = first_new;
 }
 
 void GameStatesArray::deleteElem(uint32_t id) {
-		
-		GameState* gamestate = &std::get<GameState>(slots[id]);
-		delete gamestate;
 		slots[id] = head_free_index;
 		head_free_index = id;
+}
+
+void GameStatesArray::update_timeout_state(GameState* gamestate)
+{
+	if(std::time(0) - gamestate->get_last_activity() > timeout){
+		Status state = gamestate->get_status();
+		if(state == TURN_B || state == WAITING_FOR_OPPONENT){
+			gamestate->set_status(WIN_A);
+		}
+		else if(state == TURN_A) 
+		{
+			gamestate->set_status(WIN_B);
+		}
+	}
 }
 
 uint32_t GameStatesArray::cleanse_timeouted_games()
@@ -53,9 +62,17 @@ uint32_t GameStatesArray::cleanse_timeouted_games()
 	for(auto& elem : slots){
 		if(GameState* gamestate = std::get_if<GameState>(&elem)){
 			if(std::time(0) - gamestate->get_last_activity() > timeout){
-				deleteElem(gamestate->get_game_id());
-				cleaned_number++;
-				
+				// Only cleanse timeouted games that have ended
+				// Or those that have ended and their timer has run out afterwards too
+				if(gamestate->get_status() == WIN_A || gamestate->get_status() == WIN_B
+						|| std::time(0) - gamestate->get_last_activity() > timeout * 2){
+					deleteElem(gamestate->get_game_id());
+					cleaned_number++;
+				}
+				else 
+				{
+					update_timeout_state(gamestate);
+				}
 			}
 		}
 	}
@@ -86,8 +103,16 @@ uint32_t GameStatesArray::insertNewElem(uint32_t player_a_id)
 
 GameState* GameStatesArray::get_game_state(uint32_t game_id) 
 {
-	if(GameState* gamestate = std::get_if<GameState>(&slots[game_id]))
+	if(game_id >= slots.size())
+		return nullptr;
+
+	if(GameState* gamestate = std::get_if<GameState>(&slots[game_id])){
+		// We update the timeout state to set to WIN_A or WIN_B 
+		// before passing it to ServerService
+		update_timeout_state(gamestate);
 		return gamestate;
+	}
 	else 
 		return nullptr;
 }
+

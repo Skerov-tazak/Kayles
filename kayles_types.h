@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <ctime>
+#include <string>
+#include <sstream>
 
 enum Status : uint8_t{
 	WAITING_FOR_OPPONENT = 0,
@@ -24,7 +26,8 @@ enum ErrorType : uint8_t{
 	UKNOWN_MESSAGE_TYPE = 0,
 	INVALID_PLAYER = 1,
 	INVALID_GAME_ID = 5,
-	INVALID_PAWN = 11
+	INVALID_MESSAGE_LENGTH = 6,
+	ILLEGAL_MOVE = 11
 };
 
 struct ClientMessage {
@@ -32,6 +35,15 @@ struct ClientMessage {
 	uint32_t player_id;
 	uint32_t game_id;
 	uint8_t pawn;
+
+	std::string to_string() const {
+		std::ostringstream oss;
+		oss << "ClientMessage[type=" << (int)message_type 
+		    << ", player=" << player_id 
+		    << ", game=" << game_id 
+		    << ", pawn=" << (int)pawn << "]";
+		return oss.str();
+	}
 };
 
 #endif // KAYLES_TYPES_H

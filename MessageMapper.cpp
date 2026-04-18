@@ -1,11 +1,10 @@
 #include "MessageMapper.h"
 
 ClientMessage mapper_parse_client_message(char* msg){
-	
 	uint8_t msg_type_raw = static_cast<uint8_t>(msg[0]);
 	uint32_t player_id;
 	uint32_t game_id;
-	uint8_t pawn = static_cast<uint8_t>(msg[9]);
+	uint8_t pawn = 0;
 
 	std::memcpy(&player_id, &msg[1], 4);
 	std::memcpy(&game_id, &msg[5], 4);
@@ -13,14 +12,18 @@ ClientMessage mapper_parse_client_message(char* msg){
 	player_id = ntohl(player_id);
 	game_id = ntohl(game_id);
 
+	if (msg_type_raw == MSG_MOVE_1 || msg_type_raw == MSG_MOVE_2) {
+		pawn = static_cast<uint8_t>(msg[9]);
+	}
+
 	return ClientMessage({static_cast<MessageType>(msg_type_raw), player_id, game_id, pawn});
 }
 
-void mapper_encode_client_message(ClientMessage msg, char* buffer){
-	uint8_t msg_type = static_cast<uint8_t>(msg.message_type);
-	uint32_t player_id = htonl(msg.player_id);
-	uint32_t game_id = htonl(msg.game_id);
-	uint8_t pawn = msg.pawn;
+void mapper_encode_client_message(ClientMessage* msg, char* buffer){
+	uint8_t msg_type = static_cast<uint8_t>(msg->message_type);
+	uint32_t player_id = htonl(msg->player_id);
+	uint32_t game_id = htonl(msg->game_id);
+	uint8_t pawn = msg->pawn;
 
 	buffer[0] = msg_type;
 	std::memcpy(&buffer[1], &player_id, 4);
@@ -46,14 +49,18 @@ GameState mapper_parse_gamestate_message(char* msg){
 	uint8_t max_pawn = static_cast<uint8_t>(msg[13]);
 
 	size_t bitmap_size = max_pawn / 8 + 1;
-	uint8_t* pawn_row = new uint8_t[bitmap_size];
-	std::memcpy(pawn_row, &msg[14], bitmap_size);
+	// We need a dummy row to initialize GameState, then we overwrite it
+	uint8_t* dummy_row = new uint8_t[bitmap_size];
+	memset(dummy_row, 0, bitmap_size);
 
-	GameState state(player_a_id, game_id, pawn_row, max_pawn);
+	GameState state(player_a_id, game_id, dummy_row, max_pawn);
 	state.set_player_b(player_b_id);
 	state.set_status(status);
+	
+	// Copy actual pawn_row
+	memcpy(state.get_pawn_row(), &msg[14], bitmap_size);
 
-	delete[] pawn_row;
+	delete[] dummy_row;
 	return state;
 }
 
