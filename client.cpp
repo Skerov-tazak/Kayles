@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -13,7 +14,7 @@
 #include "MessageMapper.h"
 
 void print_usage() {
-	std::cerr << "Usage: ./client -a address -p port -m type[/player_id[/game_id[/pawn]]] -t timeout\n";
+	std::cerr << "Usage: ./client -a <address> -p <port> -m <type[/player_id[/game_id[/pawn]]]> -t <timeout>\n";
 }
 
 std::string status_to_string(Status s) {
@@ -77,11 +78,12 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	// This sends proper packet sizes based on fields
 	size_t send_len = 0;
 	switch (num_fields) {
-		case 1:  send_len = 1;  break;
-		case 2:  send_len = 5;  break;
-		case 3:  send_len = 9;  break;
+		case 1:  send_len = 1;	break;
+		case 2:  send_len = 5;	break;
+		case 3:  send_len = 9;	break;
 		default: send_len = 10; break;
 	}
 
@@ -147,34 +149,50 @@ int main(int argc, char* argv[]) {
 		return 0;
 	}
 
-	// Check for error
-	// According to ServerController, error is indicated by byte 12 being 255
+	// Error is indicated by byte 12 being 255
 	if (received_len >= 14 && static_cast<uint8_t>(buffer[12]) == 255) {
 		uint8_t error_byte_idx = static_cast<uint8_t>(buffer[13]);
-		std::cout << "Server returned error indicator (255) at byte 12. Faulty byte index: " << (int)error_byte_idx << "\n";
+		std::cout << "Server returned inavlid message (255). Faulty byte index: " << (int)error_byte_idx << "\n";
 	} else if (received_len >= 14) {
+
 		// Parse GameState
-		GameState state = mapper_parse_gamestate_message(buffer);
-		
-		std::cout << "--- Game State ---\n";
-		std::cout << "Game ID: " << state.get_game_id() << "\n";
-		std::cout << "Player A ID: " << state.get_player_a_id() << "\n";
-		std::cout << "Player B ID: " << state.get_player_b_id() << "\n";
-		std::cout << "Status: " << status_to_string(state.get_status()) << "\n";
-		std::cout << "Max Pawn: " << (int)state.get_max_pawn() << "\n";
-		
-		std::cout << "Board: ";
-		uint8_t* row = state.get_pawn_row();
-		for (int i = 0; i <= state.get_max_pawn(); ++i) {
-			int byte_idx = i / 8;
-			int bit_idx = 7 - (i % 8); // MSB-first
-			if (row[byte_idx] & (1 << bit_idx)) {
-				std::cout << "I";
-			} else {
-				std::cout << ".";
+		// This is kind of unnecessary and can theoretically 
+		// cause us to bad_alloc because we are reallocing 
+		// the max_pawn, which is already at the buffer. 
+		//
+		//
+		// Still I believe that if someone can bad alloc at 46 bytes
+		// then they deserve to just get an error message 
+		// This can be fixed in 20 seconds btw
+
+		try 
+		{
+			GameState state = mapper_parse_gamestate_message(buffer);
+
+			std::cout << "--- Game State ---\n";
+			std::cout << "Game ID: " << state.get_game_id() << "\n";
+			std::cout << "Player A ID: " << state.get_player_a_id() << "\n";
+			std::cout << "Player B ID: " << state.get_player_b_id() << "\n";
+			std::cout << "Status: " << status_to_string(state.get_status()) << "\n";
+			std::cout << "Max Pawn: " << (int)state.get_max_pawn() << "\n";
+			
+			std::cout << "Board: ";
+			uint8_t* row = state.get_pawn_row();
+			for (int i = 0; i <= state.get_max_pawn(); ++i) {
+				int byte_idx = i / 8;
+				int bit_idx = 7 - (i % 8); // MSB-first
+				if (row[byte_idx] & (1 << bit_idx)) {
+					std::cout << "I";
+				} else {
+					std::cout << ".";
+				}
 			}
-		}
-		std::cout << "\n";
+			std::cout << "\n";
+
+		} catch (const std::bad_alloc& e) {
+			perror("Couldn't allocate enough space to print out the game state the easy way\n");
+
+	}
 	} else {
 		std::cout << "Received invalid or short message from server.\n";
 	}

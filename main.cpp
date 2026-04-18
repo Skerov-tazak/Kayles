@@ -63,7 +63,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (r_arg == nullptr || a_arg == nullptr || p_arg == -1 || t_arg == -1) {
-		throw std::invalid_argument("All arguments (-r, -a, -p, -t) are compulsory.");
+		std::cout << "Usage: " << argv[0] << " -r <rules> -a <ip_address> -p <port> -t <timeout>" << std::endl;
+		exit(1);
 	}
 
 	// Validate -r: string max length 255 consisting only of 1s and 0s
