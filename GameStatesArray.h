@@ -36,6 +36,12 @@ class GameStatesArray {
 		uint32_t cleanse_timeouted_games();
 		
 		void update_timeout_state(GameState*);
+		
+		bool is_timedout(GameState*);
+
+		bool is_a_timedout(GameState*);
+
+		bool is_b_timedout(GameState*);
 
 	public:
 

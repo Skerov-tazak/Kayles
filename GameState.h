@@ -18,7 +18,8 @@ private:
 	Status status;
 	uint8_t max_pawn;
 	uint8_t* pawn_row;
-	time_t last_activity;
+	time_t last_activity_a;
+	time_t last_activity_b;
 
 public:
 	GameState(uint32_t player_a_id, uint32_t game_id, uint8_t* pawn_template, uint8_t max_pawn);
@@ -35,6 +36,8 @@ public:
 	uint32_t get_player_b_id() const;
 	Status get_status() const;
 	time_t get_last_activity() const;
+	time_t get_last_activity_a() const;
+	time_t get_last_activity_b() const;
 	uint8_t get_max_pawn() const;
 	uint8_t* get_pawn_row() const;
 
@@ -47,7 +50,9 @@ public:
 
 	void remove_two_pawns(uint32_t pawn_number);
 
-	void refresh_activity();
+	void refresh_activity_a();
+
+	void refresh_activity_b();
 
 	std::string to_string() const;
 

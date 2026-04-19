@@ -37,33 +37,44 @@ void ServerService::perform_requests() {
 		if (gamestate == nullptr)
 			throw INVALID_GAME_ID;
 		if (gamestate->get_player_a_id() != player && gamestate->get_player_b_id() != player)
-			throw INVALID_PLAYER;
+			throw INVALID_GAME_ID; // According to forum there can be no invalid player id 
 	}
+	else 
+	{
+		if(openGameID.has_value()){
+			uint32_t id = openGameID.value();
+			GameState* open_gamestate = games.get_game_state(id);
+			// games.get_game_state calls update_timeout_state, 
+			// so if it timed out, status is now WIN_A
+			if (open_gamestate && open_gamestate->get_status() == WAITING_FOR_OPPONENT) {
+				open_gamestate->set_player_b(message->player_id);
+				open_gamestate->set_status(TURN_B);
+				message->game_id = openGameID.value();
+				openGameID = std::nullopt;
+			} else {
+				// Timed out or already taken, create new game
+				openGameID = games.insertNewElem(player);
+				message->game_id = openGameID.value();
+			}
+		}
+		else 
+		{
+			openGameID = std::make_optional<uint32_t>(games.insertNewElem(player));
+			message->game_id = openGameID.value();
+			
+		}
+	}
+
+	// All below is "proper" (maybe illegal) communication and thus we refresh their timeout
+	
+	// This refreshes the correct timeout
+	if(gamestate->get_player_a_id() == player)
+		gamestate->refresh_activity_a();
+	else 
+		gamestate->refresh_activity_b();
 
 	switch (message->message_type) {
 		case MSG_JOIN:{
-			if(openGameID.has_value()){
-				uint32_t id = openGameID.value();
-				GameState* open_gamestate = games.get_game_state(id);
-				// games.get_game_state calls update_timeout_state, 
-				// so if it timed out, status is now WIN_A
-				if (open_gamestate && open_gamestate->get_status() == WAITING_FOR_OPPONENT) {
-					open_gamestate->set_player_b(message->player_id);
-					open_gamestate->set_status(TURN_B);
-					message->game_id = openGameID.value();
-					openGameID = std::nullopt;
-				} else {
-					// Timed out or already taken, create new game
-					openGameID = games.insertNewElem(player);
-					message->game_id = openGameID.value();
-				}
-			}
-			else 
-			{
-				openGameID = std::make_optional<uint32_t>(games.insertNewElem(player));
-				message->game_id = openGameID.value();
-				
-			}
 			break;
 		}
 		
@@ -126,7 +137,6 @@ void ServerService::perform_requests() {
 		}
 		
 		case MSG_KEEP_ALIVE:{
-			gamestate->refresh_activity();
 			break;
 		}
 		

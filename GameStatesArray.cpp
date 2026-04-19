@@ -41,38 +41,46 @@ void GameStatesArray::deleteElem(uint32_t id) {
 		head_free_index = id;
 }
 
+bool GameStatesArray::is_timedout(GameState* gamestate){
+	if(std::time(0) - gamestate->get_last_activity() > timeout)
+		return true;
+}
+
+bool GameStatesArray::is_a_timedout(GameState* gamestate){
+	if(std::time(0) - gamestate->get_last_activity_a() > timeout)
+		return true;
+}
+
+bool GameStatesArray::is_b_timedout(GameState* gamestate){
+	if(std::time(0) - gamestate->get_last_activity_b() > timeout)
+		return true;
+}
+
 void GameStatesArray::update_timeout_state(GameState* gamestate)
 {
-	if(std::time(0) - gamestate->get_last_activity() > timeout){
-		Status state = gamestate->get_status();
-		if(state == TURN_B || state == WAITING_FOR_OPPONENT){
-			gamestate->set_status(WIN_A);
-		}
-		else if(state == TURN_A) 
-		{
-			gamestate->set_status(WIN_B);
-		}
+	Status state = gamestate->get_status();
+	if(state == TURN_B || state == WAITING_FOR_OPPONENT && is_b_timedout(gamestate) == true)
+	{
+		gamestate->set_status(WIN_A);
+	}
+	else if(state == TURN_A && is_a_timedout(gamestate) == true) 
+	{
+		gamestate->set_status(WIN_B);
 	}
 }
+
 
 uint32_t GameStatesArray::cleanse_timeouted_games()
 {
 	uint32_t cleaned_number = 0;
 	// Iterate over all elements and cleanse those that have timed out
 	for(auto& elem : slots){
-		if(GameState* gamestate = std::get_if<GameState>(&elem)){
-			if(std::time(0) - gamestate->get_last_activity() > timeout){
-				// Only cleanse timeouted games that have ended
-				// Or those that have ended and their timer has run out afterwards too
-				if(gamestate->get_status() == WIN_A || gamestate->get_status() == WIN_B
-						|| std::time(0) - gamestate->get_last_activity() > timeout * 2){
-					deleteElem(gamestate->get_game_id());
-					cleaned_number++;
-				}
-				else 
-				{
-					update_timeout_state(gamestate);
-				}
+		if(GameState* gamestate = std::get_if<GameState>(&elem))
+		{
+			if(is_timedout(gamestate))
+			{
+				deleteElem(gamestate->get_game_id());
+				cleaned_number++;
 			}
 		}
 	}
@@ -108,9 +116,13 @@ GameState* GameStatesArray::get_game_state(uint32_t game_id)
 
 	if(GameState* gamestate = std::get_if<GameState>(&slots[game_id])){
 		// We update the timeout state to set to WIN_A or WIN_B 
+		// If the game is timedout we just pass the nullptr (and delete it lazily later of course)
 		// before passing it to ServerService
-		update_timeout_state(gamestate);
-		return gamestate;
+		if(!is_timedout(gamestate)) 
+		{
+			update_timeout_state(gamestate);
+			return gamestate;
+		}
 	}
 	else 
 		return nullptr;

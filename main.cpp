@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 
 	// Validate -r: string max length 255 consisting only of 1s and 0s
 	size_t r_len = strlen(r_arg);
-	if (r_len > 255) {
+	if (r_len > 256) {
 		throw std::invalid_argument("Rules string (-r) must not exceed 255 characters.");
 	}
 	if (r_len == 0) {

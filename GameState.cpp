@@ -5,7 +5,8 @@
 GameState::GameState(uint32_t player_a_id, uint32_t game_id, uint8_t* pawn_template, uint8_t max_pawn)
 	: game_id(game_id), player_a_id(player_a_id), player_b_id(0), status(WAITING_FOR_OPPONENT), max_pawn(max_pawn) 
 {
-	last_activity = std::time(0);
+	last_activity_a = std::time(0);
+	last_activity_b = std::time(0);
 	size_t bitmap_size = max_pawn / 8 + 1;
 	pawn_row = new uint8_t[bitmap_size]; 
 	std::copy(pawn_template, pawn_template + bitmap_size, pawn_row);
@@ -18,7 +19,7 @@ GameState::~GameState()
 
 GameState::GameState(const GameState& other) 
 	: game_id(other.game_id), player_a_id(other.player_a_id), player_b_id(other.player_b_id), 
-	  status(other.status), max_pawn(other.max_pawn), last_activity(other.last_activity)
+	  status(other.status), max_pawn(other.max_pawn), last_activity_a(other.last_activity_a), last_activity_b(other.last_activity_b)
 {
 	size_t bitmap_size = max_pawn / 8 + 1;
 	pawn_row = new uint8_t[bitmap_size];
@@ -33,7 +34,8 @@ GameState& GameState::operator=(const GameState& other) {
 		player_b_id = other.player_b_id;
 		status = other.status;
 		max_pawn = other.max_pawn;
-		last_activity = other.last_activity;
+		last_activity_a = other.last_activity_a;
+		last_activity_b = other.last_activity_b;
 		size_t bitmap_size = max_pawn / 8 + 1;
 		pawn_row = new uint8_t[bitmap_size];
 		std::copy(other.pawn_row, other.pawn_row + bitmap_size, pawn_row);
@@ -43,7 +45,7 @@ GameState& GameState::operator=(const GameState& other) {
 
 GameState::GameState(GameState&& other) noexcept
 	: game_id(other.game_id), player_a_id(other.player_a_id), player_b_id(other.player_b_id),
-	  status(other.status), max_pawn(other.max_pawn), pawn_row(other.pawn_row), last_activity(other.last_activity)
+	  status(other.status), max_pawn(other.max_pawn), pawn_row(other.pawn_row), last_activity_a(other.last_activity_a), last_activity_b(other.last_activity_b)
 {
 	other.pawn_row = nullptr;
 }
@@ -57,7 +59,8 @@ GameState& GameState::operator=(GameState&& other) noexcept {
 		status = other.status;
 		max_pawn = other.max_pawn;
 		pawn_row = other.pawn_row;
-		last_activity = other.last_activity;
+		last_activity_a = other.last_activity_a;
+		last_activity_b = other.last_activity_b;
 		other.pawn_row = nullptr;
 	}
 	return *this;
@@ -80,7 +83,15 @@ Status GameState::get_status() const {
 }
 
 time_t GameState::get_last_activity() const {
-	return last_activity;
+	return std::max(last_activity_a, last_activity_b);
+}
+
+time_t GameState::get_last_activity_a() const {
+	return last_activity_a;
+}
+
+time_t GameState::get_last_activity_b() const {
+	return last_activity_b;
 }
 
 uint8_t GameState::get_max_pawn() const {
@@ -92,7 +103,9 @@ uint8_t* GameState::get_pawn_row() const {
 }
 
 void GameState::set_status(Status new_status){
-	refresh_activity();
+
+	// Moved the refresh to a different place
+
 	status = new_status;
 }
 
@@ -160,8 +173,11 @@ void GameState::remove_two_pawns(uint32_t pawn_number) {
 	pawn_row[byte_index_2] &= ~mask_2;
 }
 
-void GameState::refresh_activity() {
-	last_activity = std::time(0);
+void GameState::refresh_activity_a() {
+	last_activity_a = std::time(0);
+}
+void GameState::refresh_activity_b() {
+	last_activity_b = std::time(0);
 }
 
 std::string GameState::to_string() const {
